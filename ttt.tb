@@ -1,0 +1,297 @@
+class Board
+  attr_accessor :cells
+
+
+  def initialize
+  	self.reset!
+  end
+
+  def reset!
+  	@cells = Array.new(9," ")
+  end
+
+  def position
+  	x = gets.chomp.to_i
+  	x-=1
+  	@cells[x]
+  end
+
+  def display
+  	puts " #{@cells[0]} | #{@cells[1]} | #{@cells[2]} \n-----------\n #{@cells[3]} | #{@cells[4]} | #{@cells[5]} \n-----------\n #{@cells[6]} | #{@cells[7]} | #{@cells[8]} "
+  end
+
+  def full?
+    !@cells.any?{|x| x == " " || x == "" }
+  end
+
+  def turn_count
+    x = @cells.count("X")
+    o = @cells.count("O")
+    x + o
+  end
+
+  def taken?(position)
+  	position = position.to_i
+  	position-=1
+    !(@cells[position].nil? || @cells[position] == " ")
+  end
+
+  def valid_move?(position)
+  	position = position.to_i
+  	!self.taken?(position) && position.between?(1,9)
+  end
+
+  def update(position, player)
+    @cells[position.to_i-1] = player.token
+  end
+
+end
+
+class Game
+  attr_accessor :board,:player_1,:player_2
+
+WIN_COMBINATIONS_GAME = [
+  [0,1,2],
+  [3,4,5],
+  [6,7,8],
+  [0,3,6],
+  [1,4,7],
+  [2,5,8],
+  [0,4,8],
+  [6,4,2]
+  ]
+
+  def initialize(player_1 = Human.new("X"),player_2 = Human.new("O"),board = Board.new)
+    @player_1 = player_1
+    @player_2 = player_2
+    @board = board
+  end
+
+  def player_1
+    @player_1
+  end
+
+  def player_2
+    @player_2
+  end
+
+  def current_player
+    @board.turn_count % 2 == 0 ? @player_1 : @player_2
+  end
+
+  def over?
+    self.won?||self.draw?
+  end
+
+  def won?
+    if self.winner == "X" || self.winner == "O"
+      return true
+    else
+      return false
+    end
+  end
+
+  def draw?
+    !self.won? && !@board.cells.any?{|x| x == " " || x == "" }
+  end
+
+  def winner
+    WIN_COMBINATIONS_GAME.each do |x|
+    win_index_1 = x[0]
+    win_index_2 = x[1]
+    win_index_3 = x[2]
+
+    position_1 = @board.cells[win_index_1]
+    position_2 = @board.cells[win_index_2]
+    position_3 = @board.cells[win_index_3]
+
+    if position_1 == "X" && position_2 == "X" && position_3 == "X"
+      return "X"
+    elsif position_1 == "O" && position_2 == "O" && position_3 == "O"
+      return "O"
+    end
+   end
+    return nil
+  end
+
+  def turn
+    puts "It's #{self.current_player.token}'s turn. Please enter location(0-9):"
+    x = self.current_player.move
+    if @board.valid_move?(x)
+      @board.update(x,current_player)
+    else
+      puts "Invalid move, please try again!"
+    end
+    @board.display
+
+  end
+
+
+  def play
+    while !self.over?
+    self.turn
+    end
+    if self.won?
+     puts "Congratulations #{self.winner} Wins!"
+     elsif self.draw?
+     puts "Its a draw!!"
+    end
+  end
+
+  def start
+    puts "Welcome to Tic Tac Toe -AI versions"
+    puts "Enter number of players: (0, 1, 2)"
+    answer = gets.chomp
+    case answer
+    when "0"
+      puts "Enjoy the game between 2 Computers"
+      @player_1 = Computer.new("X")
+      @player_1.board = self.board
+      @player_2 = Computer.new("O")
+      @player_2.board = self.board
+      self.play
+    when "1"
+      puts "Choose your side: X or O"
+      side = gets.chomp
+      if side == "X"||"x"
+        @player_2 = Computer.new("O")
+        @player_2.board = self.board
+      elsif side == "O"||"o"
+        @player_1 = Computer.new("X")
+        @player_1.board = self.board
+      else
+        puts "Invalid entry. Game restarting..."
+        self.start
+      end
+      puts "Game starting..."
+      @board.display
+      self.play
+    when "2"
+      puts "Let's begin"
+      self.play
+    else
+      puts "Invalid entry. Game restarting..."
+      self.start
+    end
+  end
+
+end
+
+class Player
+  attr_reader :token
+     WIN_COMBINATIONS = [
+  [0,1,2],
+  [3,4,5],
+  [6,7,8],
+  [0,3,6],
+  [1,4,7],
+  [2,5,8],
+  [0,4,8],
+  [6,4,2]
+  ]
+  def initialize(token)
+    @token = token
+  end
+
+end
+
+class Human < Player
+  def move
+    x = gets.chomp
+    return x
+  end
+end
+
+class Computer < Player
+  attr_accessor :board
+
+  def move
+    turn_counter = @board.turn_count
+    if self.token == "X"
+      if turn_counter == 0
+        return "5"
+      elsif turn_counter == 2
+        if !@board.taken?("4") && !@board.taken?("9")
+        @board.cells.each do |x|
+          if x == "O"
+            y = @board.cells.index(x)
+            y+=2
+            return y.to_s
+          end
+        end
+         elsif @board.taken?("9")
+           return "4"
+         else
+          return "1"
+        end
+
+      elsif turn_counter == 4 || turn_counter == 6 || turn_counter == 8
+          self.winchecker
+      end
+
+      elsif self.token == "O"
+      if turn_counter == 1
+        if !@board.taken?("5")
+          return "5"
+        else
+        self.winchecker
+        end
+      elsif turn_counter == 3 || turn_counter == 5 || turn_counter == 7
+          self.winchecker
+      end
+    end
+
+
+  end
+
+  def winchecker
+
+    grid = []
+    holder = []
+
+    WIN_COMBINATIONS.each do |x|
+
+    win_index_1 = x[0]
+    win_index_2 = x[1]
+    win_index_3 = x[2]
+
+    holder << @board.cells[win_index_1]
+    holder << @board.cells[win_index_2]
+    holder << @board.cells[win_index_3]
+
+
+      grid << holder
+      holder = []
+    end
+
+    counter = 0
+    combo = []
+    grid.each do |xxx|
+      y = xxx.detect{ |e| xxx.count(e) > 1 }
+      if y == "X" && xxx.count(" ") == 1
+        combo = xxx
+        break
+      elsif y == "O" && xxx.count(" ") == 1
+        combo = xxx
+        break
+      else
+        counter+=1
+      end
+    end
+
+    if counter > 7
+      target_index = @board.cells.rindex(" ")
+      else
+      blank_index = combo.index(" ")
+      target_index = WIN_COMBINATIONS[counter][blank_index]
+    end
+
+    target_index+=1
+
+    end
+  end
+
+
+
+game = Game.new
+game.start
